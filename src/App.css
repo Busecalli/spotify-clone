@@ -321,6 +321,29 @@ h2 {
   display: none;
 }
 
+/* Authentication and Loading Styles */
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  background-color: #121212;
+  color: #1DB954;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.auth-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  color: #1DB954;
+  font-size: 18px;
+}
+
 /* Player Styles */
 .player {
   height: 90px;
