@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 import Sidebar from './components/Sidebar'
 import MainContent from './components/MainContent'
@@ -10,37 +11,8 @@ import { configureAuth } from './auth/config/AuthConfig'
 // Configure auth services and controllers
 const { authService, userController } = configureAuth();
 
-// Protected layout component
-function AppLayout() {
-  const { isAuthenticated, loading, hasToken } = useAuth();
-  const [redirecting, setRedirecting] = useState(false);
-  
-  // Effect to handle URL redirection based on authentication state
-  useEffect(() => {
-    // Only handle redirection when not loading
-    if (!loading) {
-      // If we're at the root path and not authenticated, redirect to login
-      if (window.location.pathname === '/' && !isAuthenticated && !hasToken()) {
-        setRedirecting(true);
-        // Small timeout to avoid immediate redirect which can cause UI flicker
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 100);
-      }
-    }
-  }, [isAuthenticated, loading, hasToken]);
-  
-  // Show loading state while checking authentication or redirecting
-  if (loading || redirecting) {
-    return <div className="loading-screen">Loading...</div>;
-  }
-  
-  // Redirect to auth routes if not authenticated
-  if (!isAuthenticated) {
-    return <AuthRoutes />;
-  }
-  
-  // Show main app if authenticated
+// Dashboard layout component that includes sidebar, main content and player
+function DashboardLayout() {
   return (
     <div className="app">
       <div className="main-container">
@@ -50,7 +22,54 @@ function AppLayout() {
       <Player />
     </div>
   );
+}
 
+// Protected route component that checks authentication
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading, hasToken, refreshAuthStatus } = useAuth();
+  
+  useEffect(() => {
+    // If there's a token but user is not authenticated, try to refresh auth status
+    if (!isAuthenticated && hasToken()) {
+      refreshAuthStatus();
+    }
+  }, [isAuthenticated, hasToken, refreshAuthStatus]);
+  
+  if (loading) {
+    return <div className="loading-screen">Loading...</div>;
+  }
+  
+  // If there's a token but not authenticated yet, show loading
+  if (!isAuthenticated && hasToken()) {
+    return <div className="loading-screen">Verifying authentication...</div>;
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+// Main app layout with routing
+function AppLayout() {
+  const { isAuthenticated, loading } = useAuth();
+  
+  // Show loading state while checking authentication
+  if (loading) {
+    return <div className="loading-screen">Loading...</div>;
+  }
+  
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthRoutes />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthRoutes />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        } />
+        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+      </Routes>
+    </Router>
+  );
 }
 
 function App() {

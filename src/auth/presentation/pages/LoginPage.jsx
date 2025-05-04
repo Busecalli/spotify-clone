@@ -66,10 +66,10 @@ const LoginPage = ({ onNavigate }) => {
     }
     
     try {
-      // Pass a callback to redirect to home page after successful login
+      // Pass a callback to redirect to dashboard page after successful login
       await login(formData.username, formData.password, () => {
-        // Redirect to home page
-        window.location.href = '/';
+        // Redirect to dashboard page
+        window.location.href = '/dashboard';
       });
     } catch (error) {
       console.error('Login submission error:', error);

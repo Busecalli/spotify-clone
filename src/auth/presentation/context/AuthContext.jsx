@@ -29,7 +29,17 @@ export function AuthProvider({ authService, children }) {
           return;
         }
         
-        // Token exists, try to get current user
+        // Check if the user is authenticated with the token
+        const isUserAuthenticated = await authService.isAuthenticated();
+        
+        if (!isUserAuthenticated) {
+          // Token exists but is invalid
+          localStorage.removeItem('auth_token');
+          setUser(User.createAnonymous());
+          return;
+        }
+        
+        // Token exists and is valid, get current user
         const currentUser = await authService.getCurrentUser();
         setUser(currentUser);
       } catch (err) {
@@ -37,13 +47,40 @@ export function AuthProvider({ authService, children }) {
         setError('Failed to authenticate user');
         // Reset to anonymous user on error
         setUser(User.createAnonymous());
+        // Clear invalid token
+        localStorage.removeItem('auth_token');
       } finally {
         setLoading(false);
       }
     };
 
     loadUser();
+    
+    // Add event listener for storage changes to handle token updates in other tabs
+    const handleStorageChange = (e) => {
+      if (e.key === 'auth_token') {
+        loadUser();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [authService]);
+  
+  // Force refresh auth status when component mounts
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token && !user.isLoggedIn()) {
+      const refreshAuth = async () => {
+        await authService.isAuthenticated();
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      };
+      refreshAuth();
+    }
+  }, []);
 
   /**
    * Login with username and password
@@ -55,7 +92,19 @@ export function AuthProvider({ authService, children }) {
     try {
       setLoading(true);
       setError(null);
-      const authenticatedUser = await authService.login(username, password);
+      
+      // Attempt to login with the auth service
+      const authData = await authService.login(username, password);
+      
+      // Verify authentication status after login
+      const isUserAuthenticated = await authService.isAuthenticated();
+      
+      if (!isUserAuthenticated) {
+        throw new Error('Authentication failed - could not verify user');
+      }
+      
+      // Get the authenticated user details
+      const authenticatedUser = await authService.getCurrentUser();
       setUser(authenticatedUser);
       
       // If a success callback is provided, call it
@@ -65,7 +114,10 @@ export function AuthProvider({ authService, children }) {
       
       return authenticatedUser;
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message || 'Login failed');
+      // Clear any invalid token
+      localStorage.removeItem('auth_token');
       throw err;
     } finally {
       setLoading(false);
@@ -124,8 +176,26 @@ export function AuthProvider({ authService, children }) {
     login,
     logout,
     register,
-    // Add a method to check if token exists
-    hasToken: () => !!localStorage.getItem('auth_token')
+    // Method to check if token exists
+    hasToken: () => !!localStorage.getItem('auth_token'),
+    // Method to refresh authentication status
+    refreshAuthStatus: async () => {
+      try {
+        setLoading(true);
+        const isUserAuthenticated = await authService.isAuthenticated();
+        if (isUserAuthenticated) {
+          const currentUser = await authService.getCurrentUser();
+          setUser(currentUser);
+        } else {
+          setUser(User.createAnonymous());
+        }
+      } catch (err) {
+        console.error('Failed to refresh auth status:', err);
+        setUser(User.createAnonymous());
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,19 +1,15 @@
-import { AuthApiService } from '../infrastructure/api/AuthApiService';
 import { AuthRepositoryImpl } from '../infrastructure/repositories/AuthRepositoryImpl';
 import { AuthService } from '../application/services/AuthService';
-import { createAxiosAuthHttpClient } from '../infrastructure/http/AxiosHttpAdapter';
 import { UserController } from '../presentation/controllers/UserController';
+import { MockAuthApiService } from '../infrastructure/api/MockAuthApiService';
 
 /**
  * Configure and create authentication service with all dependencies
  * @returns {Object} The configured auth services and repositories
  */
 export function configureAuth() {
-  // Create HTTP client with auth interceptors using Axios
-  const httpClient = createAxiosAuthHttpClient(import.meta.env.VITE_API_BASE_URL || '');
-  
-  // Create API service
-  const authApiService = new AuthApiService(httpClient);
+  // Use mock auth API service with hardcoded credentials
+  const authApiService = new MockAuthApiService();
   
   // Create repository implementation
   const authRepository = new AuthRepositoryImpl(authApiService);
@@ -28,7 +24,6 @@ export function configureAuth() {
     authService,
     authRepository,
     authApiService,
-    httpClient,
     userController
   };
 }

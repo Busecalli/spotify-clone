@@ -11,10 +11,10 @@ const AuthRoutes = () => {
   const { isAuthenticated } = useAuth();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   
-  // Redirect to home if already authenticated
+  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.href = '/';
+      window.location.href = '/dashboard';
     }
   }, [isAuthenticated]);
 
